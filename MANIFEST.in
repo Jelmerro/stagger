@@ -1,4 +1,0 @@
-include README.rst
-include *.txt
-include test/*.py
-include test/samples/*.id3

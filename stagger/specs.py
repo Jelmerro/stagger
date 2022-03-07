@@ -1,22 +1,22 @@
-#
 # specs.py
-# From the stagger project: http://code.google.com/p/stagger/
+# https://github.com/Jelmerro/stagger
 #
+# Copyright (c) 2022-2022 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
 # are met:
-# 
+#
 # - Redistributions of source code must retain the above copyright
 #   notice, this list of conditions and the following disclaimer.
-# 
+#
 # - Redistributions in binary form must reproduce the above copyright
 #   notice, this list of conditions and the following disclaimer in
 #   the documentation and/or other materials provided with the
 #   distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,32 +30,32 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import abc
-import collections
-
-from abc import abstractmethod
+from abc import abstractmethod, ABCMeta
+from collections.abc import ByteString, Sequence
 from warnings import warn
 
-from stagger.conversion import *
-from stagger.errors import *
+from stagger.conversion import Int8
+from stagger.errors import FrameError, FrameWarning
 
-# The idea for the Spec system comes from Mutagen.
 
 def optionalspec(spec):
     spec._optional = True
     return spec
 
-class Spec(metaclass=abc.ABCMeta):
+
+class Spec(metaclass=ABCMeta):
     def __init__(self, name):
         self.name = name
 
     _optional = False
-        
-    @abstractmethod
-    def read(self, frame, data): pass
 
     @abstractmethod
-    def write(self, frame, value): pass
+    def read(self, frame, data):
+        pass
+
+    @abstractmethod
+    def write(self, frame, value):
+        pass
 
     def validate(self, frame, value):
         self.write(frame, value)
@@ -64,29 +64,34 @@ class Spec(metaclass=abc.ABCMeta):
     def to_str(self, value):
         return str(value)
 
+
 class ByteSpec(Spec):
     def read(self, frame, data):
         if len(data) < 1:
             raise EOFError()
         return data[0], data[1:]
+
     def write(self, frame, value):
         return bytes([value])
+
     def validate(self, frame, value):
         if value is None:
             return value
         if not isinstance(value, int):
             raise TypeError("Not a byte")
-        if  value not in range(256):
+        if value not in range(256):
             raise ValueError("Invalid byte value")
         return value
 
+
 class IntegerSpec(Spec):
     """An 8-bit, big-endian unsigned integer of specified width.
-    Width is the number of bits in the representation.  
+    Width is the number of bits in the representation.
     If width is a sting, it must name a frame attribute to get the
     width from.
     The width is automatically rounded up to the nearest multiple of 8.
     """
+
     def __init__(self, name, width):
         super().__init__(name)
         self.width = width
@@ -109,7 +114,7 @@ class IntegerSpec(Spec):
     def validate(self, frame, value):
         if value is None:
             return value
-        if type(value) is not int: 
+        if type(value) is not int:
             raise TypeError("Not an integer: {0}".format(repr(value)))
         w = self._width(frame)
         if value < 0:
@@ -118,6 +123,7 @@ class IntegerSpec(Spec):
             raise ValueError("Value is too large")
         return value
 
+
 class SignedIntegerSpec(IntegerSpec):
     """An 8-bit, big-endian two's-complement signed integer of specified width.
     Width is the number of bits in the representation.
@@ -125,13 +131,14 @@ class SignedIntegerSpec(IntegerSpec):
     width from.
     The width is automatically rounded up to the nearest multiple of 8.
     """
+
     def __init__(self, name, width):
         super().__init__(name, width=width)
 
     def read(self, frame, data):
         w = self._width(frame)
         (value, data) = super().read(frame, data)
-        if value & (1 << ((w << 3) - 1)): # Negative value
+        if value & (1 << ((w << 3) - 1)):  # Negative value
             value -= (1 << (w << 3))
         return value, data
 
@@ -144,7 +151,7 @@ class SignedIntegerSpec(IntegerSpec):
     def validate(self, frame, value):
         if value is None:
             return value
-        if type(value) is not int: 
+        if type(value) is not int:
             raise TypeError("Not an integer")
         w = self._width(frame)
         if value >= (1 << ((w << 3) - 1)):
@@ -153,13 +160,15 @@ class SignedIntegerSpec(IntegerSpec):
             raise ValueError("Value is too small")
         return value
 
+
 class RVADIntegerSpec(IntegerSpec):
     """An 8-bit, big-endian signed integer in RVAD format.
     The value is stored in sign + magnitude format,
-    with the sign bit encoded in bit <signbit> of the 
+    with the sign bit encoded in bit <signbit> of the
     frame's <signs> attribute.  A zero sign bit indicates
     the value is negative.
     """
+
     def __init__(self, name, width, signbit, signs="signs"):
         super().__init__(name, width)
         self.signbit = signbit
@@ -167,7 +176,7 @@ class RVADIntegerSpec(IntegerSpec):
 
     def read(self, frame, data):
         (value, data) = super().read(frame, data)
-        if not (getattr(frame, self.signs) & (1 << self.signbit)):
+        if not getattr(frame, self.signs) & (1 << self.signbit):
             value *= -1
         return (value, data)
 
@@ -177,7 +186,7 @@ class RVADIntegerSpec(IntegerSpec):
     def validate(self, frame, value):
         if value is None:
             return value
-        if type(value) is not int: 
+        if type(value) is not int:
             raise TypeError("Not an integer: {0}".format(repr(value)))
 
         # Update sign bit in frame.signs.
@@ -192,7 +201,7 @@ class RVADIntegerSpec(IntegerSpec):
         if abs(value) >= 1 << (w << 3):
             raise ValueError("Value is too large")
         return value
-        
+
 
 class VarIntSpec(Spec):
     def read(self, frame, data):
@@ -200,17 +209,19 @@ class VarIntSpec(Spec):
             raise EOFError()
         bits = data[0]
         data = data[1:]
-        bytes = (bits + 7) >> 3
-        if len(data) < bytes:
+        bytecount = (bits + 7) >> 3
+        if len(data) < bytecount:
             raise EOFError()
-        return Int8.decode(data[:bytes]), data[bytes:]
+        return Int8.decode(data[:bytecount]), data[bytecount:]
+
     def write(self, frame, value):
-        bytes = 4
+        bytecount = 4
         t = value >> 32
         while t > 0:
             t >>= 32
-            bytes += 4
-        return Int8.encode(bytes * 8, width=1) + Int8.encode(value, width=bytes)
+            bytecount += 4
+        return Int8.encode(bytecount * 8, width=1) + Int8.encode(value, width=bytecount)
+
     def validate(self, frame, value):
         if value is None:
             return value
@@ -220,53 +231,65 @@ class VarIntSpec(Spec):
             raise ValueError("Value is negative")
         return value
 
+
 class BinaryDataSpec(Spec):
     def read(self, frame, data):
         return data, bytes()
+
     def write(self, frame, value):
         return bytes(value)
+
     def validate(self, frame, value):
         if value is None:
             return bytes()
-        if not isinstance(value, collections.ByteString):
+        if not isinstance(value, ByteString):
             raise TypeError("Not a byte sequence")
         return value
+
     def to_str(self, value):
-        return '{0}{1}'.format(value[0:16], "..." if len(value) > 16 else "")
+        return "{0}{1}".format(value[0:16], "..." if len(value) > 16 else "")
+
 
 class SimpleStringSpec(Spec):
     def __init__(self, name, length):
         super().__init__(name)
         self.length = length
+
     def read(self, frame, data):
-        return data[:self.length].decode('latin-1'), data[self.length:]
+        return data[:self.length].decode("latin-1"), data[self.length:]
+
     def write(self, frame, value):
         if value is None:
             return b" " * self.length
-        data = value.encode('latin-1')
+        data = value.encode("latin-1")
         if len(data) != self.length:
             raise ValueError("String length mismatch")
         return data
+
     def validate(self, frame, value):
         if value is None:
             return None
         if not isinstance(value, str):
             raise TypeError("Not a string")
-        if len(value) != self.length: 
+        if len(value) != self.length:
             raise ValueError("String length mismatch")
-        value.encode('latin-1')
+        value.encode("latin-1")
         return value
+
 
 class LanguageSpec(SimpleStringSpec):
     def __init__(self, name):
         super().__init__(name, 3)
-    
+
+
 class NullTerminatedStringSpec(Spec):
     def read(self, frame, data):
-        rawstr, sep, data = data.partition(b"\x00")
+        rawstr, _sep, data = data.partition(b"\x00")
         return rawstr.decode('latin-1'), data
+
     def write(self, frame, value):
         return value.encode('latin-1') + b"\x00"
+
     def validate(self, frame, value):
         if value is None:
             return ""
@@ -275,27 +298,28 @@ class NullTerminatedStringSpec(Spec):
         value.encode('latin-1')
         return value
 
+
 class URLStringSpec(NullTerminatedStringSpec):
     def read(self, frame, data):
-        rawstr, sep, data = data.partition(b"\x00")
+        rawstr, _sep, data = data.partition(b"\x00")
         if len(rawstr) == 0 and len(data) > 0:
-            # iTunes prepends an extra null byte to WFED frames (encoding spec?)
-            #warn("Frame {0} includes a text encoding byte".format(frame.frameid), Warning)
-            rawstr, sep, data = data.partition(b"\x00")
+            rawstr, _sep, data = data.partition(b"\x00")
         return rawstr.decode('latin-1'), data
+
 
 class EncodingSpec(ByteSpec):
     "EncodingSpec must be the first spec."
+
     def read(self, frame, data):
         enc, data = super().read(frame, data)
         if enc & 0xFC:
             raise FrameError("Invalid encoding")
         return enc, data
-    def write(self, frame, value):
-        return super().write(frame, value)
+
     def validate(self, frame, value):
         if value is None:
             return value
+
         def norm(s):
             return s.lower().replace("-", "")
         if isinstance(value, str):
@@ -314,8 +338,8 @@ class EncodingSpec(ByteSpec):
     def to_str(self, value):
         if value is None:
             return ""
-        else:
-            return EncodedStringSpec._encodings[value][0]
+        return EncodedStringSpec._encodings[value][0]
+
 
 class EncodedStringSpec(Spec):
     _encodings = (('latin-1', b"\x00"),
@@ -326,15 +350,13 @@ class EncodedStringSpec(Spec):
     def read(self, frame, data):
         enc, term = self._encodings[frame.encoding]
         if len(term) == 1:
-            rawstr, sep, data = data.partition(term)
+            rawstr, _sep, data = data.partition(term)
         else:
             index = len(data)
             for i in range(0, len(data), 2):
                 if data[i:i+2] == term:
                     index = i
                     break
-            #if index == len(data):
-            #    warn("Unterminated string in frame '{0}'".format(frame.frameid), Warning)
             if index & 1:
                 raise EOFError()
             rawstr = data[:index]
@@ -355,11 +377,14 @@ class EncodedStringSpec(Spec):
             self.write(frame, value)
         return value
 
+
 class EncodedFullTextSpec(EncodedStringSpec):
-    pass # TODO
+    pass
+
 
 class SequenceSpec(Spec):
     """Recognizes a sequence of values, all of the same spec."""
+
     def __init__(self, name, spec):
         super().__init__(name)
         self.spec = spec
@@ -372,20 +397,21 @@ class SequenceSpec(Spec):
             seq.append(elem)
         return seq, data
 
-    def write(self, frame, values):
-        if isinstance(values, str):
-            return self.spec.write(frame, values)
+    def write(self, frame, value):
+        if isinstance(value, str):
+            return self.spec.write(frame, value)
         data = bytearray()
-        for v in values:
+        for v in value:
             data.extend(self.spec.write(frame, v))
         return data
 
-    def validate(self, frame, values):
-        if values is None:
+    def validate(self, frame, value):
+        if value is None:
             return []
-        if isinstance(values, str):
-            values = [values]
-        return [self.spec.validate(frame, v) for v in values]
+        if isinstance(value, str):
+            value = [value]
+        return [self.spec.validate(frame, v) for v in value]
+
 
 class MultiSpec(Spec):
     def __init__(self, name, *specs):
@@ -405,25 +431,25 @@ class MultiSpec(Spec):
             except (EOFError, ValueError):
                 if len(seq) == 0:
                     raise
-                warn("Frame {0} has {1} bytes of junk at end".format(frame.frameid, len(origdata)), 
+                warn("Frame {0} has {1} bytes of junk at end".format(frame.frameid, len(origdata)),
                      FrameWarning)
                 frame.junkdata = origdata
                 data = b''
         return seq, data
 
-    def write(self, frame, values):
+    def write(self, frame, value):
         data = bytearray()
-        for v in values:
+        for v in value:
             for i in range(len(self.specs)):
                 data.extend(self.specs[i].write(frame, v[i]))
         return bytes(data)
 
-    def validate(self, frame, values):
-        if values is None:
+    def validate(self, frame, value):
+        if value is None:
             return []
         res = []
-        for v in values:
-            if not isinstance(v, collections.Sequence) or isinstance(v, str):
+        for v in value:
+            if not isinstance(v, Sequence) or isinstance(v, str):
                 raise TypeError("Records must be sequences")
             if len(v) != len(self.specs):
                 raise ValueError("Invalid record length")
@@ -431,37 +457,40 @@ class MultiSpec(Spec):
                              for i in range(len(self.specs))))
         return res
 
+
 class ASPISpec(Spec):
     "A list of frame.N integers whose width depends on frame.b."
+
     def read(self, frame, data):
         width = 1 if frame.b == 1 else 2
         value = []
         if len(data) < width * frame.N:
             raise EOFError
-        for i in range(frame.N):
+        for _ in range(frame.N):
             value.append(Int8.decode(data[:width]))
             data = data[width:]
         return value, data
 
-    def write(self, frame, values):
+    def write(self, frame, value):
         width = 1 if frame.b == 1 else 2
         data = bytearray()
-        for v in values:
+        for v in value:
             data.extend(Int8.encode(v, width=width))
         return data
-    
-    def validate(self, frame, values):
-        if values is None:
+
+    def validate(self, frame, value):
+        if value is None:
             return []
-        if not isinstance(values, collections.Sequence) or isinstance(values, str):
+        if not isinstance(value, Sequence) or isinstance(value, str):
             raise TypeError("ASPISpec needs a sequence of integers")
-        if len(values) != frame.N:
+        if len(value) != frame.N:
             raise ValueError("ASPISpec needs {0} integers".format(frame.N))
-        self.write(frame, values)
+        self.write(frame, value)
         res = []
-        for v in values:
+        for v in value:
             res.append(v)
         return res
+
 
 class PictureTypeSpec(ByteSpec):
     picture_types = (
@@ -492,4 +521,3 @@ class PictureTypeSpec(ByteSpec):
 
     def to_str(self, value):
         return "{1}({0})".format(value, self.picture_types[value])
-

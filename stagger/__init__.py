@@ -1,22 +1,22 @@
+# __init__.py
+# https://github.com/Jelmerro/stagger
 #
-# __init__.py 
-# From the stagger project: http://code.google.com/p/stagger/
-#
+# Copyright (c) 2022-2022 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
 # are met:
-# 
+#
 # - Redistributions of source code must retain the above copyright
 #   notice, this list of conditions and the following disclaimer.
-# 
+#
 # - Redistributions in binary form must reproduce the above copyright
 #   notice, this list of conditions and the following disclaimer in
 #   the documentation and/or other materials provided with the
 #   distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -33,16 +33,13 @@
 import stagger.frames
 import stagger.tags
 import stagger.id3
-import stagger.util
 
 from stagger.errors import *
 from stagger.frames import Frame, ErrorFrame, UnknownFrame, TextFrame, URLFrame
 from stagger.tags import read_tag, decode_tag, delete_tag, Tag22, Tag23, Tag24
 from stagger.id3v1 import Tag1
 
-version = (1, 0, 1)
+version = (1, 1, 0)
 versionstr = ".".join((str(v) for v in version))
 
 default_tag = Tag24
-
-stagger.util.python_version_check()

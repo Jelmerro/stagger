@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
-#
 # friendly.py
-# From the stagger project: http://code.google.com/p/stagger/
+# https://github.com/Jelmerro/stagger
 #
+# Copyright (c) 2022-2022 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
 # are met:
-# 
+#
 # - Redistributions of source code must retain the above copyright
 #   notice, this list of conditions and the following disclaimer.
-# 
+#
 # - Redistributions in binary form must reproduce the above copyright
 #   notice, this list of conditions and the following disclaimer in
 #   the documentation and/or other materials provided with the
 #   distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -35,29 +35,33 @@ import unittest
 import os.path
 import warnings
 
-import stagger
-from stagger.id3 import *
+from stagger.tags import Tag22, Tag23, Tag24
+from stagger.id3 import TT2, TIT1, TIT2, TPE1, TPE2, TALB, TCOM, TCON, TSOT
+from stagger.id3 import TSOP, TSO2, TSOA, TSOC, TRCK, TPOS, TYE, TDA, TIM, TYER
+from stagger.id3 import TDAT, TIME, TDRC, PIC, APIC, COM, COMM
+from stagger.errors import Warning
+
 
 class FriendlyTestCase(unittest.TestCase):
     def testTitle22(self):
-        tag = stagger.Tag22()
+        tag = Tag22()
 
         tag[TT2] = "Foobar"
         self.assertEqual(tag.title, "Foobar")
 
         tag[TT2] = ("Foo", "Bar")
         self.assertEqual(tag.title, "Foo / Bar")
-        
+
         tag.title = "Baz"
         self.assertEqual(tag[TT2], TT2(text=["Baz"]))
         self.assertEqual(tag.title, "Baz")
-        
+
         tag.title = "Quux / Xyzzy"
         self.assertEqual(tag[TT2], TT2(text=["Quux", "Xyzzy"]))
         self.assertEqual(tag.title, "Quux / Xyzzy")
 
     def testTitle(self):
-        for tagcls in stagger.Tag23, stagger.Tag24:
+        for tagcls in Tag23, Tag24:
             tag = tagcls()
 
             tag[TIT2] = "Foobar"
@@ -75,7 +79,7 @@ class FriendlyTestCase(unittest.TestCase):
             self.assertEqual(tag.title, "Quux / Xyzzy")
 
     def testTextFrames(self):
-        for tagcls in stagger.Tag22, stagger.Tag23, stagger.Tag24:
+        for tagcls in Tag22, Tag23, Tag24:
             tag = tagcls()
 
             for attr, frame in (("title", TIT2),
@@ -90,7 +94,7 @@ class FriendlyTestCase(unittest.TestCase):
                                 ("sort_album_artist", TSO2),
                                 ("sort_album", TSOA),
                                 ("sort_composer", TSOC)):
-                if tagcls == stagger.Tag22:
+                if tagcls == Tag22:
                     frame = frame._v2_frame
 
                 # No frame -> empty string
@@ -121,13 +125,13 @@ class FriendlyTestCase(unittest.TestCase):
                 self.assertTrue(frame not in tag)
 
     def testTrackFrames(self):
-        for tagcls in stagger.Tag22, stagger.Tag23, stagger.Tag24:
+        for tagcls in Tag22, Tag23, Tag24:
             tag = tagcls()
             for track, total, frame in (("track", "track_total", TRCK),
                                         ("disc", "disc_total", TPOS)):
-                if tagcls == stagger.Tag22:
+                if tagcls == Tag22:
                     frame = frame._v2_frame
-                
+
                 # No frame -> zero values
                 self.assertEqual(getattr(tag, track), 0)
                 self.assertEqual(getattr(tag, total), 0)
@@ -136,7 +140,7 @@ class FriendlyTestCase(unittest.TestCase):
                 tag[frame] = "12"
                 self.assertEqual(getattr(tag, track), 12)
                 self.assertEqual(getattr(tag, total), 0)
-                
+
                 tag[frame] = "12/24"
                 self.assertEqual(getattr(tag, track), 12)
                 self.assertEqual(getattr(tag, total), 24)
@@ -155,30 +159,31 @@ class FriendlyTestCase(unittest.TestCase):
                 self.assertEqual(getattr(tag, track), 7)
                 self.assertEqual(getattr(tag, total), 21)
                 self.assertEqual(tag[frame], frame(text=["7/21"]))
-                
+
                 # Set to 0/0, check frame is gone
                 setattr(tag, total, 0)
                 self.assertEqual(getattr(tag, track), 7)
                 self.assertEqual(getattr(tag, total), 0)
                 self.assertEqual(tag[frame], frame(text=["7"]))
-                
-                setattr(tag, track, 0) 
+
+                setattr(tag, track, 0)
                 self.assertEqual(getattr(tag, track), 0)
                 self.assertEqual(getattr(tag, total), 0)
                 self.assertTrue(frame not in tag)
-               
+
                 # Repeat, should not throw
-                setattr(tag, track, 0) 
+                setattr(tag, track, 0)
                 setattr(tag, total, 0)
                 self.assertTrue(frame not in tag)
-                
+
                 # Set just the total
                 setattr(tag, total, 13)
                 self.assertEqual(tag[frame], frame(text=["0/13"]))
 
     def testDate22_23(self):
-        for tagcls, yearframe, dateframe, timeframe in ((stagger.Tag22, TYE, TDA, TIM),
-                                                        (stagger.Tag23, TYER, TDAT, TIME)):
+        for tagcls, yearframe, dateframe, timeframe in (
+            (Tag22, TYE, TDA, TIM), (Tag23, TYER, TDAT, TIME)
+        ):
             tag = tagcls()
 
             # Check empty
@@ -217,7 +222,7 @@ class FriendlyTestCase(unittest.TestCase):
             self.assertEqual(tag[yearframe], yearframe("2009"))
             self.assertEqual(tag[dateframe], dateframe("0712"))
             self.assertEqual(tag[timeframe], timeframe("1801"))
-            
+
             tag.date = "2009-07-12 18:01:23"
             self.assertEqual(tag.date, "2009-07-12 18:01")
             self.assertEqual(tag[yearframe], yearframe("2009"))
@@ -235,10 +240,10 @@ class FriendlyTestCase(unittest.TestCase):
             self.assertEqual(tag[yearframe], yearframe("2009"))
             self.assertTrue(dateframe not in tag)
             self.assertTrue(timeframe not in tag)
-            
+
     def testDate24(self):
-        tag = stagger.Tag24()
-            
+        tag = Tag24()
+
         # Check empty
         self.assertEqual(tag.date, "")
 
@@ -253,29 +258,29 @@ class FriendlyTestCase(unittest.TestCase):
         tag.date = "   2009    "
         self.assertEqual(tag.date, "2009")
         self.assertEqual(tag[TDRC], TDRC(tag.date))
-        
+
         tag.date = "2009-07"
         self.assertEqual(tag.date, "2009-07")
         self.assertEqual(tag[TDRC], TDRC(tag.date))
         tag.date = "2009-07-12"
         self.assertEqual(tag.date, "2009-07-12")
         self.assertEqual(tag[TDRC], TDRC(tag.date))
-        
+
         tag.date = "2009-07-12 18:01"
         self.assertEqual(tag.date, "2009-07-12 18:01")
         self.assertEqual(tag[TDRC], TDRC(tag.date))
-        
+
         tag.date = "2009-07-12 18:01:23"
         self.assertEqual(tag.date, "2009-07-12 18:01:23")
         self.assertEqual(tag[TDRC], TDRC(tag.date))
-            
+
         tag.date = "2009-07-12T18:01:23"
         self.assertEqual(tag.date, "2009-07-12 18:01:23")
         self.assertEqual(tag[TDRC], TDRC(tag.date))
 
-    def testPicture22(self): 
-        tag = stagger.Tag22()
-            
+    def testPicture22(self):
+        tag = Tag22()
+
         # Check empty
         self.assertEqual(tag.picture, "")
 
@@ -284,23 +289,23 @@ class FriendlyTestCase(unittest.TestCase):
         self.assertEqual(tag.picture, "")
         self.assertTrue(PIC not in tag)
 
-        tag.picture = os.path.join(os.path.dirname(__file__), "samples", "cover.jpg")
+        tag.picture = os.path.join(os.path.dirname(
+            __file__), "samples", "cover.jpg")
         self.assertEqual(tag[PIC][0].type, 0)
         self.assertEqual(tag[PIC][0].desc, "")
         self.assertEqual(tag[PIC][0].format, "JPG")
         self.assertEqual(len(tag[PIC][0].data), 60511)
         self.assertEqual(tag.picture, "Other(0)::<60511 bytes of jpeg data>")
-       
+
         # Set to empty
         tag.picture = ""
         self.assertEqual(tag.picture, "")
         self.assertTrue(PIC not in tag)
 
-
-    def testPicture23_24(self): 
-        for tagcls in stagger.Tag23, stagger.Tag24:
+    def testPicture23_24(self):
+        for tagcls in Tag23, Tag24:
             tag = tagcls()
-            
+
             # Check empty
             self.assertEqual(tag.picture, "")
 
@@ -310,12 +315,14 @@ class FriendlyTestCase(unittest.TestCase):
             self.assertTrue(APIC not in tag)
 
             # Set picture.
-            tag.picture = os.path.join(os.path.dirname(__file__), "samples", "cover.jpg")
+            tag.picture = os.path.join(os.path.dirname(
+                __file__), "samples", "cover.jpg")
             self.assertEqual(tag[APIC][0].type, 0)
             self.assertEqual(tag[APIC][0].desc, "")
             self.assertEqual(tag[APIC][0].mime, "image/jpeg")
             self.assertEqual(len(tag[APIC][0].data), 60511)
-            self.assertEqual(tag.picture, "Other(0)::<60511 bytes of jpeg data>")
+            self.assertEqual(
+                tag.picture, "Other(0)::<60511 bytes of jpeg data>")
 
             # Set to empty
             tag.picture = ""
@@ -323,9 +330,7 @@ class FriendlyTestCase(unittest.TestCase):
             self.assertTrue(APIC not in tag)
 
     def testComment(self):
-        for tagcls, frameid in ((stagger.Tag22, COM), 
-                                (stagger.Tag23, COMM), 
-                                (stagger.Tag24, COMM)):
+        for tagcls, frameid in ((Tag22, COM), (Tag23, COMM), (Tag24, COMM)):
             tag = tagcls()
 
             # Comment should be the empty string in an empty tag.
@@ -344,7 +349,7 @@ class FriendlyTestCase(unittest.TestCase):
             self.assertEqual(tag[frameid][0].lang, "eng")
             self.assertEqual(tag[frameid][0].desc, "")
             self.assertEqual(tag[frameid][0].text, "Foobar")
-            
+
             # Override comment.
             tag.comment = "Baz"
             self.assertEqual(tag.comment, "Baz")
@@ -362,9 +367,7 @@ class FriendlyTestCase(unittest.TestCase):
     def testCommentWithExtraFrame(self):
         "Test getting/setting the comment when other comments are present."
 
-        for tagcls, frameid in ((stagger.Tag22, COM), 
-                                (stagger.Tag23, COMM), 
-                                (stagger.Tag24, COMM)):
+        for tagcls, frameid in ((Tag22, COM), (Tag23, COMM), (Tag24, COMM)):
             tag = tagcls()
             frame = frameid(lan="eng", desc="foo", text="This is a text")
             tag[frameid] = [frame]
@@ -385,7 +388,7 @@ class FriendlyTestCase(unittest.TestCase):
             self.assertEqual(tag[frameid][1].lang, "eng")
             self.assertEqual(tag[frameid][1].desc, "")
             self.assertEqual(tag[frameid][1].text, "Foobar")
-            
+
             # Override comment.
             tag.comment = "Baz"
             self.assertEqual(tag.comment, "Baz")
@@ -401,9 +404,9 @@ class FriendlyTestCase(unittest.TestCase):
             self.assertEqual(len(tag[frameid]), 1)
             self.assertEqual(tag[frameid][0], frame)
 
-        
+
 suite = unittest.TestLoader().loadTestsFromTestCase(FriendlyTestCase)
 
 if __name__ == "__main__":
-    warnings.simplefilter("always", stagger.Warning)
+    warnings.simplefilter("always", Warning)
     unittest.main(defaultTest="suite")

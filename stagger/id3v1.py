@@ -1,22 +1,22 @@
-#
 # id3v1.py
-# From the stagger project: http://code.google.com/p/stagger/
+# https://github.com/Jelmerro/stagger
 #
+# Copyright (c) 2022-2022 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
 # are met:
-# 
+#
 # - Redistributions of source code must retain the above copyright
 #   notice, this list of conditions and the following disclaimer.
-# 
+#
 # - Redistributions in binary form must reproduce the above copyright
 #   notice, this list of conditions and the following disclaimer in
 #   the documentation and/or other materials provided with the
 #   distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -32,18 +32,18 @@
 
 import string
 
-from stagger.errors import *
-import stagger.fileutil as fileutil
+from stagger.errors import NoTagError
+from stagger.fileutil import opened, replace_chunk
 
 from stagger.id3 import genres
+
 
 class Tag1():
     @property
     def genre(self):
         if self._genre < len(genres):
             return "{0} ({1})".format(self._genre, genres[self._genre])
-        else:
-            return "{0} (unknown)".format(self._genre)
+        return "{0} (unknown)".format(self._genre)
 
     @genre.setter
     def genre(self, value):
@@ -68,20 +68,22 @@ class Tag1():
         raise TypeError("Invalid genre")
 
     def __str__(self):
-        return "\n".join(["title={0}".format(repr(self.title)),
-                          "artist={0}".format(repr(self.artist)),
-                          "album={0}".format(repr(self.album)),
-                          "year={0}".format(repr(self.year)),
-                          "comment={0}".format(repr(self.comment)),
-                          "genre={0}".format(self.genre)])
+        return "\n".join([
+            "title={0}".format(repr(self.title)),
+            "artist={0}".format(repr(self.artist)),
+            "album={0}".format(repr(self.album)),
+            "year={0}".format(repr(self.year)),
+            "comment={0}".format(repr(self.comment)),
+            "genre={0}".format(self.genre)])
 
     def __repr__(self):
-        return "Tag1({0})".format(", ".join(["title={0}".format(repr(self.title)),
-                                             "artist={0}".format(repr(self.artist)),
-                                             "album={0}".format(repr(self.album)),
-                                             "year={0}".format(repr(self.year)),
-                                             "comment={0}".format(repr(self.comment)),
-                                             "genre={0}".format(self._genre)]))
+        return "Tag1({0})".format(", ".join([
+            "title={0}".format(repr(self.title)),
+            "artist={0}".format(repr(self.artist)),
+            "album={0}".format(repr(self.album)),
+            "year={0}".format(repr(self.year)),
+            "comment={0}".format(repr(self.comment)),
+            "genre={0}".format(self._genre)]))
 
     def __eq__(self, other):
         return (isinstance(other, Tag1)
@@ -91,7 +93,7 @@ class Tag1():
                 and self.year == other.year
                 and self.comment == other.comment
                 and self._genre == other._genre)
-    
+
     @classmethod
     def decode(cls, data, encoding="iso-8859-1"):
         def decode_field(data):
@@ -119,7 +121,7 @@ class Tag1():
     @classmethod
     def read(cls, filename, offset=None, encoding="iso-8859-1"):
         """Read an ID3v1 tag from a file."""
-        with fileutil.opened(filename, "rb") as file:
+        with opened(filename, "rb") as file:
             if offset is None:
                 file.seek(-128, 2)
             else:
@@ -130,7 +132,7 @@ class Tag1():
     @classmethod
     def delete(cls, filename, offset=None):
         """Delete ID3v1 tag from a file (if present)."""
-        with fileutil.opened(filename, "rb+") as file:
+        with opened(filename, "rb+") as file:
             if offset is None:
                 file.seek(-128, 2)
             else:
@@ -138,7 +140,7 @@ class Tag1():
             offset = file.tell()
             data = file.read(128)
             if data[:3] == b"TAG":
-                fileutil.replace_chunk(file, offset, 128, b"", in_place=True)
+                replace_chunk(file, offset, 128, b"", in_place=True)
 
     def encode(self, encoding="iso-8859-1", errors="strict"):
         def encode_field(field, width):
@@ -162,7 +164,7 @@ class Tag1():
         return data
 
     def write(self, filename, encoding="iso-8859-1", errors="strict"):
-        with fileutil.opened(filename, "rb+") as file:
+        with opened(filename, "rb+") as file:
             file.seek(-128, 2)
             data = file.read(128)
             if data[:3] == b"TAG":
@@ -170,4 +172,3 @@ class Tag1():
             else:
                 file.seek(0, 2)
             file.write(self.encode(encoding, errors))
-

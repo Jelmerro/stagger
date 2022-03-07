@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
-#
 # id3v1_fileop.py
-# From the stagger project: http://code.google.com/p/stagger/
+# https://github.com/Jelmerro/stagger
 #
+# Copyright (c) 2022-2022 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
 # are met:
-# 
+#
 # - Redistributions of source code must retain the above copyright
 #   notice, this list of conditions and the following disclaimer.
-# 
+#
 # - Redistributions in binary form must reproduce the above copyright
 #   notice, this list of conditions and the following disclaimer in
 #   the documentation and/or other materials provided with the
 #   distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -36,8 +36,9 @@ import random
 import io
 import warnings
 
-import stagger
-from stagger.errors import *
+from stagger.errors import NoTagError, Warning
+from stagger.id3v1 import Tag1
+
 
 class ID3v1FileOpTestCase(unittest.TestCase):
     def testAddDeleteTag(self):
@@ -47,8 +48,8 @@ class ID3v1FileOpTestCase(unittest.TestCase):
         data = bytearray(origdata)
         file = io.BytesIO(data)
         try:
-            self.assertRaises(NoTagError, stagger.id3v1.Tag1.read, file)
-            tag = stagger.id3v1.Tag1()
+            self.assertRaises(NoTagError, Tag1.read, file)
+            tag = Tag1()
             tag.title = "Title"
             tag.artist = "Artist"
             tag.album = "Album"
@@ -58,15 +59,16 @@ class ID3v1FileOpTestCase(unittest.TestCase):
             tag.genre = "Salsa"
             tag.write(file)
             tag.write(file)
-            tag2 = stagger.id3v1.Tag1.read(file)
+            tag2 = Tag1.read(file)
             self.assertEqual(tag, tag2)
-            stagger.id3v1.Tag1.delete(file)
+            Tag1.delete(file)
             self.assertEqual(file.getvalue(), origdata)
         finally:
             file.close()
 
+
 suite = unittest.TestLoader().loadTestsFromTestCase(ID3v1FileOpTestCase)
 
 if __name__ == "__main__":
-    warnings.simplefilter("always", stagger.Warning)
+    warnings.simplefilter("always", Warning)
     unittest.main(defaultTest="suite")

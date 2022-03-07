@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
-#
 # tag.py
-# From the stagger project: http://code.google.com/p/stagger/
+# https://github.com/Jelmerro/stagger
 #
+# Copyright (c) 2022-2022 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
 # are met:
-# 
+#
 # - Redistributions of source code must retain the above copyright
 #   notice, this list of conditions and the following disclaimer.
-# 
+#
 # - Redistributions in binary form must reproduce the above copyright
 #   notice, this list of conditions and the following disclaimer in
 #   the documentation and/or other materials provided with the
 #   distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -35,14 +35,14 @@ import unittest
 import os.path
 import warnings
 
-import stagger
-from stagger.id3 import *
-
+from stagger.tags import Tag22, Tag23, Tag24, FrameOrder, read_tag, decode_tag
+from stagger.id3 import TT2, TIT2, TPE1, TPE2, TRCK, TP1, TALB
+from stagger.errors import FrameWarning
 
 
 class TagTestCase(unittest.TestCase):
     def testBasic(self):
-        for cls, frm in (stagger.Tag22, TT2), (stagger.Tag23, TIT2), (stagger.Tag24, TIT2):
+        for cls, frm in (Tag22, TT2), (Tag23, TIT2), (Tag24, TIT2):
             tag = cls()
             # New tag must be empty
             self.assertEqual(len(tag), 0)
@@ -62,7 +62,8 @@ class TagTestCase(unittest.TestCase):
             tag[frm] = ("Foo", "bar", "baz")
             self.assertEqual(len(tag), 1)
             self.assertEqual(len(tag._frames[frm.frameid]), 1)
-            self.assertEqual(tag[frm], frm(encoding=None, text=["Foo", "bar", "baz"]))
+            self.assertEqual(tag[frm], frm(
+                encoding=None, text=["Foo", "bar", "baz"]))
 
             # Delete frame from tag, verify it's gone
             del tag[frm]
@@ -71,21 +72,22 @@ class TagTestCase(unittest.TestCase):
             self.assertTrue(frm.frameid not in tag)
 
     def testPadding(self):
-        for tagcls, frames in ((stagger.Tag22, (TT2, TP1)), 
-                               (stagger.Tag23, (TIT2, TPE1)), 
-                               (stagger.Tag24, (TIT2, TPE1))):
+        for tagcls, frames in ((Tag22, (TT2, TP1)),
+                               (Tag23, (TIT2, TPE1)),
+                               (Tag24, (TIT2, TPE1))):
             # Create a simple tag
             tag = tagcls()
             for frame in frames:
                 tag[frame] = frame.frameid.lower()
-        
+
             # Try encoding tag with various padding options
             tag.padding_max = 0
             tag.padding_default = 0
             data_nopadding_nohint = tag.encode()
             data_nopadding_hint = tag.encode(size_hint=500)
             length = len(data_nopadding_nohint)
-            self.assertEqual(len(data_nopadding_nohint), len(data_nopadding_hint))
+            self.assertEqual(len(data_nopadding_nohint),
+                             len(data_nopadding_hint))
             self.assertTrue(data_nopadding_nohint == data_nopadding_hint)
 
             tag.padding_max = 1000
@@ -108,71 +110,71 @@ class TagTestCase(unittest.TestCase):
             self.assertEqual(len(data_default_smallhint), length + 250)
 
     def testFrameEncoding(self):
-        for tagcls, frm in ((stagger.Tag22, TT2), 
-                            (stagger.Tag23, TIT2), 
-                            (stagger.Tag24, TIT2)):
+        for tagcls, frm in ((Tag22, TT2), (Tag23, TIT2), (Tag24, TIT2)):
             tag = tagcls()
             value = frm.frameid.lower()
             tag[frm] = value
             tag.padding_max = 0
-            
-            # By default, tag should use Latin-1 to encode value (it contains only ASCII).
-            data = tag.encode()
-            self.assertNotEqual(data.find(value.encode("latin-1") + b"\x00"), -1)
 
-            # Now override encoding, see that frame is encoded accordingly.
+            # By default, tag should use Latin-1 to encode value
+            data = tag.encode()
+            self.assertNotEqual(
+                data.find(value.encode("latin-1") + b"\x00"), -1)
+
+            # Now override encoding, see that frame is encoded accordingly
             old_encodings = tag.encodings
             tag.encodings = ("utf-16",)
             data = tag.encode()
             self.assertEqual(data.find(value.encode("latin-1") + b"\x00"), -1)
-            self.assertNotEqual(data.find(value.encode("utf-16") + b"\x00\x00"), -1)
+            self.assertNotEqual(
+                data.find(value.encode("utf-16") + b"\x00\x00"), -1)
             tag.encodings = old_encodings
-            
+
             # Now change value to contain non-Latin-1 chars
             value = "Lőrentey Károly"
             tag[frm] = value
             data = tag.encode()
-            if tagcls is stagger.Tag24: 
+            if tagcls is Tag24:
                 # Stagger falls back to utf-8 for 2.4 frames.
-                self.assertNotEqual(data.find(value.encode("utf-8") + b"\x00"), -1)
-            else: 
+                self.assertNotEqual(
+                    data.find(value.encode("utf-8") + b"\x00"), -1)
+            else:
                 # Other versions fall back to utf-16.
-                self.assertNotEqual(data.find(value.encode("utf-16") + b"\x00\x00"), -1)
-            
+                self.assertNotEqual(
+                    data.find(value.encode("utf-16") + b"\x00\x00"), -1)
+
             # Force UTF-16-BE encoding.
             tag.encodings = ("utf-16-be",)
             data = tag.encode()
-            self.assertNotEqual(data.find(value.encode("utf-16-be") + b"\x00\x00"), -1)
+            self.assertNotEqual(
+                data.find(value.encode("utf-16-be") + b"\x00\x00"), -1)
 
-            
     def testFrameOrder(self):
-        # 24.stagger.sample-01.id3 contains a simple test tag that has file frames
-        # in the following order:
-        #
+        # 24.stagger.sample-01.id3 contains a simple test tag that has
+        # file frames in the following order:
         # TIT2("TIT2"), TPE1("TPE1"), TALB("TALB"), TRCK("TRCK"), TPE2("TPE2")
-        
-        testfile = os.path.join(os.path.dirname(__file__), "samples", 
+
+        testfile = os.path.join(os.path.dirname(__file__), "samples",
                                 "24.stagger.sample-01.id3")
         framelist = [TRCK, TPE2, TALB, TIT2, TPE1]
 
         # Read tag, verify frame ordering is preserved
-        tag = stagger.read_tag(testfile)
-        self.assertEqual(len(tag), 5) 
-        self.assertEqual(set(tag.keys()), set(frame.frameid for frame in framelist))
-        self.assertEqual([frame.frameid for frame in tag.frames(orig_order=True)], 
-                         [frame.frameid for frame in framelist])
+        tag = read_tag(testfile)
+        self.assertEqual(len(tag), 5)
+        self.assertEqual(set(tag.keys()), set(
+            frame.frameid for frame in framelist))
+        self.assertEqual([
+            frame.frameid for frame in tag.frames(orig_order=True)
+        ], [frame.frameid for frame in framelist])
 
         # Test frame contents
         for framecls in framelist:
-            # tag[TIT2] == tag["TIT2"]
             self.assertTrue(framecls in tag)
             self.assertTrue(framecls.frameid in tag)
             self.assertEqual(tag[framecls], tag[framecls.frameid])
 
-            # type(tag[TIT2]) == TIT2
             self.assertTrue(isinstance(tag[framecls], framecls))
 
-            # Each frame contains a single string, which is the frame id in lowercase.
             self.assertEqual(len(tag[framecls].text), 1)
             self.assertEqual(tag[framecls].text[0], framecls.frameid.lower())
 
@@ -188,43 +190,43 @@ class TagTestCase(unittest.TestCase):
         self.assertEqual(len(tagdata), len(filedata))
         self.assertFalse(tagdata == filedata)
 
-        # Override the sort order with an empty list, 
+        # Override the sort order with an empty list,
         # verify resulting order is the same as in the original file.
 
-        tag.frame_order = stagger.tags.FrameOrder()
+        tag.frame_order = FrameOrder()
         tagdata = tag.encode()
         self.assertTrue(tagdata == filedata)
 
-        tag2 = stagger.decode_tag(tagdata)
+        tag2 = decode_tag(tagdata)
         self.assertTrue(tag == tag2)
 
     def testMultipleStrings(self):
-        for cls in (stagger.Tag23, stagger.Tag24):
-            # Versions 2.3 and 2.4 have support for multiple values in text frames.
+        for cls in (Tag23, Tag24):
+            # Versions 2.3 and 2.4 have support for multiple values in frames.
             tag = cls()
             tag.padding_max = 0
             tag[TIT2] = ("Foo", "Bar", "Baz")
             self.assertEqual(len(tag[TIT2].text), 3)
             data = tag.encode()
-            dtag = stagger.decode_tag(data)
+            dtag = decode_tag(data)
             self.assertEqual(len(dtag[TIT2].text), 3)
             self.assertEqual(dtag[TIT2].text, tag[TIT2].text)
 
         # Version 2.2 has no such support, so stagger merges multiple strings.
-        tag = stagger.Tag22()
+        tag = Tag22()
         tag.padding_max = 0
         tag[TT2] = ("Foo", "Bar", "Baz")
         self.assertEqual(len(tag[TT2].text), 3)
         with warnings.catch_warnings(record=True) as ws:
             data = tag.encode()
             self.assertEqual(len(ws), 1)
-            self.assertEqual(ws[0].category, stagger.FrameWarning)
-        dtag = stagger.decode_tag(data)
+            self.assertEqual(ws[0].category, FrameWarning)
+        dtag = decode_tag(data)
         self.assertEqual(len(dtag[TT2].text), 1)
         self.assertEqual(dtag[TT2].text, ["Foo / Bar / Baz"])
 
     def testEmptyTag(self):
-        for cls in (stagger.Tag22, stagger.Tag23, stagger.Tag24):
+        for cls in (Tag22, Tag23, Tag24):
             tag = cls()
             # Empty tags should encode as an empty byte sequence
             # (i.e., no tag header or padding).
@@ -233,18 +235,19 @@ class TagTestCase(unittest.TestCase):
     def testEmptyStrings(self):
         # 24.stagger.empty-strings.id3 consists of a TIT2 frame with 13 extra
         # NUL characters at the end.
-        testfile = os.path.join(os.path.dirname(__file__), "samples", 
-                                "24.stagger.empty-strings.id3")
+        testfile = os.path.join(os.path.dirname(
+            __file__), "samples", "24.stagger.empty-strings.id3")
         with warnings.catch_warnings(record=True) as ws:
-            tag = stagger.read_tag(testfile)
+            tag = read_tag(testfile)
             self.assertEqual(tag[TIT2].text, ["Foobar"])
             self.assertEqual(len(ws), 1)
-            self.assertEqual(ws[0].category, stagger.FrameWarning)    
-            self.assertEqual(ws[0].message.args, ("TIT2: Stripped 13 empty strings "
-                             "from end of frame",))
+            self.assertEqual(ws[0].category, FrameWarning)
+            self.assertEqual(ws[0].message.args, (
+                "TIT2: Stripped 13 empty strings from end of frame",))
+
 
 suite = unittest.TestLoader().loadTestsFromTestCase(TagTestCase)
 
 if __name__ == "__main__":
-    warnings.simplefilter("always", stagger.Warning)
+    warnings.simplefilter("always", Warning)
     unittest.main(defaultTest="suite")

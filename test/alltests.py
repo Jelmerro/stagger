@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
-#
 # alltests.py
-# From the stagger project: http://code.google.com/p/stagger/
+# https://github.com/Jelmerro/stagger
 #
+# Copyright (c) 2022-2022 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
 # are met:
-# 
+#
 # - Redistributions of source code must retain the above copyright
 #   notice, this list of conditions and the following disclaimer.
-# 
+#
 # - Redistributions in binary form must reproduce the above copyright
 #   notice, this list of conditions and the following disclaimer in
 #   the documentation and/or other materials provided with the
 #   distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -34,8 +34,6 @@
 import unittest
 import warnings
 
-import stagger
-
 import test.fileutil
 import test.conversion
 import test.specs
@@ -44,6 +42,8 @@ import test.tag
 import test.friendly
 import test.id3v1
 import test.id3v1_fileop
+
+from stagger.errors import Warning
 
 suite = unittest.TestSuite()
 suite.addTest(test.fileutil.suite)
@@ -56,5 +56,5 @@ suite.addTest(test.id3v1.suite)
 suite.addTest(test.id3v1_fileop.suite)
 
 if __name__ == "__main__":
-    warnings.simplefilter("always", stagger.Warning)
+    warnings.simplefilter("always", Warning)
     unittest.main(defaultTest="suite")
