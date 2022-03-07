@@ -72,7 +72,8 @@ from stagger.errors import NoTagError, Warning
 from stagger.id3v1 import Tag1
 
 
-testsuite_url = r"http://id3.org/Developer%20Information?action=AttachFile&do=get&target=id3v1_test_suite.tar.gz"
+testsuite_url = r"http://id3.org/Developer%20Information?action=AttachFile" \
+    "&do=get&target=id3v1_test_suite.tar.gz"
 testsuite_file = os.path.join(os.path.dirname(
     __file__), "id3v1_test_suite.tar.gz")
 

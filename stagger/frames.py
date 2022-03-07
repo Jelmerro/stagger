@@ -197,10 +197,12 @@ class Frame(metaclass=abc.ABCMeta):
     def _str_fields(self):
         fields = []
         # Determine how many fields to show
-        cutoff = max(i for i in range(len(self._framespec))
-                     if i == 0  # don't call max with an the empty sequence
-                     or not self._framespec[i]._optional
-                     or getattr(self, self._framespec[i].name, None) is not None)
+        cutoff = max(
+            i for i in range(len(self._framespec))
+            if i == 0  # don't call max with an the empty sequence
+            or not self._framespec[i]._optional
+            or getattr(self, self._framespec[i].name, None) is not None
+        )
         for spec in self._framespec[:cutoff + 1]:
             fields.append("{0}={1}".format(
                 spec.name, repr(spec.to_str(getattr(self, spec.name, None)))))
@@ -239,7 +241,9 @@ class TextFrame(Frame):
     _framespec = (EncodingSpec("encoding"),
                   SequenceSpec("text", EncodedStringSpec("text")))
 
-    def __init__(self, *values, frameid=None, flags=None, frameno=None, **kwargs):
+    def __init__(
+        self, *values, frameid=None, flags=None, frameno=None, **kwargs
+    ):
         def extract_strs(values):
             if values is None:
                 return
@@ -251,7 +255,8 @@ class TextFrame(Frame):
                         yield v
             else:
                 raise ValueError("Invalid text frame value")
-        super().__init__(frameid=frameid, flags=flags, frameno=frameno, **kwargs)
+        super().__init__(
+            frameid=frameid, flags=flags, frameno=frameno, **kwargs)
         self.text.extend(list(extract_strs(values)))
 
     @classmethod
@@ -309,8 +314,11 @@ class CreditsFrame(Frame):
 
 
 class PictureFrame(Frame):
-    def __init__(self, value=None, frameid=None, flags=None, frameno=None, **kwargs):
-        super().__init__(frameid=frameid, flags=flags, frameno=frameno, **kwargs)
+    def __init__(
+        self, value=None, frameid=None, flags=None, frameno=None, **kwargs
+    ):
+        super().__init__(
+            frameid=frameid, flags=flags, frameno=frameno, **kwargs)
         if value is not None:
             with open(value, "rb") as file:
                 self.data = file.read()

@@ -220,7 +220,8 @@ class VarIntSpec(Spec):
         while t > 0:
             t >>= 32
             bytecount += 4
-        return Int8.encode(bytecount * 8, width=1) + Int8.encode(value, width=bytecount)
+        return Int8.encode(bytecount * 8, width=1) + Int8.encode(
+            value, width=bytecount)
 
     def validate(self, frame, value):
         if value is None:
@@ -431,8 +432,8 @@ class MultiSpec(Spec):
             except (EOFError, ValueError):
                 if len(seq) == 0:
                     raise
-                warn("Frame {0} has {1} bytes of junk at end".format(frame.frameid, len(origdata)),
-                     FrameWarning)
+                warn("Frame {0} has {1} bytes of junk at end".format(
+                    frame.frameid, len(origdata)), FrameWarning)
                 frame.junkdata = origdata
                 data = b''
         return seq, data

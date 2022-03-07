@@ -40,17 +40,18 @@ from stagger.errors import Warning
 from stagger.conversion import Unsync, UnsyncReader, Syncsafe, Int8
 
 
-class ConversionTestCase(unittest.TestCase):
-    def random_data(self, length=100):
-        for _ in range(length):
-            r = random.randint(0, 10)
-            if r < 3:
-                yield 255
-            elif r < 6:
-                yield 0
-            else:
-                yield random.randint(0, 255)
+def random_data(length=100):
+    for _ in range(length):
+        r = random.randint(0, 10)
+        if r < 3:
+            yield 255
+        elif r < 6:
+            yield 0
+        else:
+            yield random.randint(0, 255)
 
+
+class ConversionTestCase(unittest.TestCase):
     def testUnsync(self):
         def contains_sync(data):
             for i in range(len(data) - 1):
@@ -58,20 +59,22 @@ class ConversionTestCase(unittest.TestCase):
                     return True
             return False
 
-        self.assertEqual(Unsync.encode(b"\x00\xFF\x00\xFF\xD0\xFF"),
-                         b"\x00\xFF\x00\x00\xFF\x00\xD0\xFF\x00")
-        self.assertEqual(Unsync.decode(b"\x00\xFF\x00\x00\xFF\x00\xD0\xFF\x00"),
-                         b"\x00\xFF\x00\xFF\xD0\xFF")
+        self.assertEqual(
+            Unsync.encode(b"\x00\xFF\x00\xFF\xD0\xFF"),
+            b"\x00\xFF\x00\x00\xFF\x00\xD0\xFF\x00")
+        self.assertEqual(
+            Unsync.decode(b"\x00\xFF\x00\x00\xFF\x00\xD0\xFF\x00"),
+            b"\x00\xFF\x00\xFF\xD0\xFF")
 
         for _ in range(20):
-            r = bytes(self.random_data(100))
+            r = bytes(random_data(100))
             e = Unsync.encode(r)
             self.assertFalse(contains_sync(e))
             self.assertTrue(Unsync.decode(e) == r)
 
     def testUnsyncReader(self):
         for _ in range(20):
-            r = bytes(self.random_data(100))
+            r = bytes(random_data(100))
             e = Unsync.encode(r)
             file = UnsyncReader(io.BytesIO(e))
             self.assertTrue(file.read(len(r)) == r)

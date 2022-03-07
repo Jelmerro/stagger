@@ -48,7 +48,7 @@ from stagger.conversion import Int8, Unsync, Syncsafe, UnsyncReader
 
 from stagger.frames import Frame, UnknownFrame, TextFrame, URLFrame
 from stagger.frames import ErrorFrame, is_frame_class
-import stagger.fileutil as fileutil
+from stagger.fileutil import opened, replace_chunk, xread
 
 _FRAME23_FORMAT_COMPRESSED = 0x0080
 _FRAME23_FORMAT_ENCRYPTED = 0x0040
@@ -80,7 +80,7 @@ _FRAME24_STATUS_UNKNOWN_MASK = 0x8F00
 
 
 def read_tag(filename):
-    with fileutil.opened(filename, "rb") as file:
+    with opened(filename, "rb") as file:
         (cls, offset, length) = detect_tag(file)
         return cls.read(file, offset)
 
@@ -90,10 +90,10 @@ def decode_tag(data):
 
 
 def delete_tag(filename):
-    with fileutil.opened(filename, "rb+") as file:
+    with opened(filename, "rb+") as file:
         try:
             (cls, offset, length) = detect_tag(file)
-            fileutil.replace_chunk(file, offset, length, bytes())
+            replace_chunk(file, offset, length, bytes())
         except NoTagError:
             pass
 
@@ -104,7 +104,7 @@ def detect_tag(filename):
     is either Tag22, Tag23, or Tag24, and (offset, length)
     is the position of the tag in the file.
     """
-    with fileutil.opened(filename, "rb") as file:
+    with opened(filename, "rb") as file:
         file.seek(0)
         header = file.read(10)
         file.seek(0)
@@ -133,7 +133,9 @@ def frameclass(cls):
 
     @frameclass
     class UFID(Frame):
-        _framespec = (NullTerminatedStringSpec("owner"), BinaryDataSpec("data"))
+        _framespec = (
+            NullTerminatedStringSpec("owner"), BinaryDataSpec("data")
+        )
     """
     assert issubclass(cls, Frame)
 
@@ -209,7 +211,8 @@ class FrameOrder:
             return keytuple(self.frame_keys[type(frame)])
 
         # Look up parent frame for v2.2 frames
-        if frame._in_version(2) and type(frame).__bases__[0] in self.frame_keys:
+        right_type = type(frame).__bases__[0] in self.frame_keys
+        if frame._in_version(2) and right_type:
             return keytuple(self.frame_keys[type(frame).__bases__[0]])
 
         # Try each pattern
@@ -275,7 +278,7 @@ class Tag(MutableMapping, metaclass=abc.ABCMeta):
             yield frameid
 
     def __len__(self):
-        return sum(len(self._frames[l]) for l in self._frames)
+        return sum(len(self._frames[block]) for block in self._frames)
 
     def __eq__(self, other):
         return (self.version == other.version
@@ -293,13 +296,12 @@ class Tag(MutableMapping, metaclass=abc.ABCMeta):
             key = key.frameid
         if isinstance(key, str):
             if not self._is_frame_id(key):
-                raise KeyError("{0}: Invalid frame id".format(key))
+                raise KeyError(f"{key}: Invalid frame id")
             if key not in self.known_frames:
                 if unknown_ok:
-                    warn("{0}: Unknown frame id".format(
-                        key), UnknownFrameWarning)
+                    warn(f"{key}: Unknown frame id", UnknownFrameWarning)
                 else:
-                    raise KeyError("{0}: Unknown frame id".format(key))
+                    raise KeyError(f"{key}: Unknown frame id")
         return key
 
     # Mapping accessor (with extra magic, for convenience)
@@ -327,8 +329,7 @@ class Tag(MutableMapping, metaclass=abc.ABCMeta):
             return
         if self.known_frames[key]._allow_duplicates:
             if not isinstance(value, Iterable) or isinstance(value, str):
-                raise ValueError(
-                    "{0} requires a list of frame values".format(key))
+                raise ValueError(f"{key} requires a list of frame values")
             self._frames[key] = [val if isinstance(val, self.known_frames[key])
                                  else self.known_frames[key](val)
                                  for val in value]
@@ -391,7 +392,7 @@ class Tag(MutableMapping, metaclass=abc.ABCMeta):
         fget=lambda self: None, fset=lambda self, value: None)
 
     def __friendly_text_collect(self, frameid):
-        """Collect text values from all instances of FRAMEID into a single list.
+        """Collect text values from all instances of FRAMEID into a single list
         Returns an empty list if there are no instances of FRAMEID with attr.
         """
         try:
@@ -497,8 +498,9 @@ class Tag(MutableMapping, metaclass=abc.ABCMeta):
         # Parse month and date.
         try:
             date = self.__friendly_text_collect(dateframe)[0]
-            m = re.match(r"\s*(?P<month>[01][0-9])\s*-?\s*(?P<day>[0-3][0-9])?\s*$",
-                         date)
+            m = re.match(
+                r"\s*(?P<month>[01][0-9])\s*-?\s*(?P<day>[0-3][0-9])?\s*$",
+                date)
             if m is not None:
                 month = int(m.group("month"))
                 day = int(m.group("day"))
@@ -537,12 +539,10 @@ class Tag(MutableMapping, metaclass=abc.ABCMeta):
             if frameid not in self:
                 return ""
             else:
-                return ", ".join("{0}:{1}:<{2} bytes of {3} data>"
-                                 .format(f._spec("type").to_str(f.type),
-                                         f.desc,
-                                         len(f.data),
-                                         imghdr.what(None, f.data[:32]))
-                                 for f in self[frameid])
+                return ", ".join("{0}:{1}:<{2} bytes of {3} data>".format(
+                    f._spec("type").to_str(f.type), f.desc, len(f.data),
+                    imghdr.what(None, f.data[:32]))
+                    for f in self[frameid])
 
         def setter(self, value):
             if len(value) > 0:
@@ -573,8 +573,7 @@ class Tag(MutableMapping, metaclass=abc.ABCMeta):
             i = comment_frame_index(self)
             if i is None:
                 return ""
-            else:
-                return self[frameid][i].text
+            return self[frameid][i].text
 
         def setter(self, value):
             assert isinstance(value, str)
@@ -604,7 +603,7 @@ class Tag(MutableMapping, metaclass=abc.ABCMeta):
     def read(cls, filename, offset=0):
         """Read an ID3v2 tag from a file."""
         i = 0
-        with fileutil.opened(filename, "rb") as file:
+        with opened(filename, "rb") as file:
             file.seek(offset)
             tag = cls()
             tag._read_header(file)
@@ -614,8 +613,8 @@ class Tag(MutableMapping, metaclass=abc.ABCMeta):
                 else:
                     frame = tag._decode_frame(frameid, bflags, data, i)
                     if frame is not None:
-                        l = tag._frames.setdefault(frame.frameid, [])
-                        l.append(frame)
+                        arr = tag._frames.setdefault(frame.frameid, [])
+                        arr.append(frame)
                         if file.tell() > tag.offset + tag.size:
                             break
                         i += 1
@@ -672,7 +671,7 @@ class Tag(MutableMapping, metaclass=abc.ABCMeta):
             filename = self._filename
         if not filename:
             raise TypeError(f"invalid file: {filename}")
-        with fileutil.opened(filename, "rb+") as file:
+        with opened(filename, "rb+") as file:
             try:
                 (offset, length) = detect_tag(file)[1:3]
             except NoTagError:
@@ -681,7 +680,7 @@ class Tag(MutableMapping, metaclass=abc.ABCMeta):
                 delete_tag(file)
                 (offset, length) = (0, 0)
             tag_data = self.encode(size_hint=length)
-            fileutil.replace_chunk(file, offset, length, tag_data)
+            replace_chunk(file, offset, length, tag_data)
 
     @abstractmethod
     def encode(self, size_hint=None):
@@ -791,7 +790,7 @@ class Tag22(Tag):
 
     def _read_header(self, file):
         self.offset = file.tell()
-        header = fileutil.xread(file, 10)
+        header = xread(file, 10)
         if header[0:5] != b"ID3\x02\00":
             raise NoTagError("ID3v2.2 header not found")
         if header[5] & 0x80:
@@ -808,12 +807,12 @@ class Tag22(Tag):
         else:
             ufile = file
         while file.tell() < self.offset + self.size:
-            header = fileutil.xread(ufile, 6)
+            header = xread(ufile, 6)
             if not self._is_frame_id(header[0:3]):
                 break
             frameid = header[0:3].decode("ASCII")
             size = Int8.decode(header[3:6])
-            data = fileutil.xread(ufile, size)
+            data = xread(ufile, size)
             yield (frameid, None, data)
 
     def _interpret_frame_flags(self, frameid, bflags, data):
@@ -912,7 +911,7 @@ class Tag23(Tag):
 
     def _read_header(self, file):
         self.offset = file.tell()
-        header = fileutil.xread(file, 10)
+        header = xread(file, 10)
         if header[0:5] != b"ID3\x03\x00":
             raise NoTagError("ID3v2.3 header not found")
         if header[5] & 0x80:
@@ -929,7 +928,7 @@ class Tag23(Tag):
 
     def __read_extended_header(self, file):
         (size, ext_flags, self.padding_size) = \
-            struct.unpack("!IHI", fileutil.xread(file, 10))
+            struct.unpack("!IHI", xread(file, 10))
         if size != 6 and size != 10:
             warn(f"Unexpected size of ID3v2.3 extended header: {size}",
                  TagWarning)
@@ -940,10 +939,10 @@ class Tag23(Tag):
                     f"{size} bytes instead of 10", TagWarning)
             else:
                 self.flags.add("ext:crc_present")
-                (self.crc32,) = struct.unpack("!I", fileutil.xread(file, 4))
+                (self.crc32,) = struct.unpack("!I", xread(file, 4))
                 size -= 6
         if size > 6:
-            fileutil.xread(file, size - 6)
+            xread(file, size - 6)
 
     def _read_frames(self, file):
         if "unsynchronised" in self.flags:
@@ -951,13 +950,13 @@ class Tag23(Tag):
         else:
             ufile = file
         while file.tell() < self.offset + self.size:
-            header = fileutil.xread(ufile, 10)
+            header = xread(ufile, 10)
             if not self._is_frame_id(header[0:4]):
                 break
             frameid = header[0:4].decode("ASCII")
             size = Int8.decode(header[4:8])
             bflags = Int8.decode(header[8:10])
-            data = fileutil.xread(ufile, size)
+            data = xread(ufile, size)
             yield (frameid, bflags, data)
 
     def _interpret_frame_flags(self, frameid, bflags, data):
@@ -1103,7 +1102,7 @@ class Tag24(Tag):
 
     def _read_header(self, file):
         self.offset = file.tell()
-        header = fileutil.xread(file, 10)
+        header = xread(file, 10)
         if header[0:5] != b"ID3\x04\x00":
             raise NoTagError("ID3v2 header not found")
         if header[5] & _TAG24_UNSYNCHRONISED:
@@ -1129,11 +1128,11 @@ class Tag24(Tag):
         return (data[1:1+length], data[1+length:])
 
     def __read_extended_header(self, file):
-        size = Syncsafe.decode(fileutil.xread(file, 4))
+        size = Syncsafe.decode(xread(file, 4))
         if size < 6:
             warn(f"Unexpected size of ID3v2.4 extended header: {size}",
                  TagWarning)
-        data = fileutil.xread(file, size - 4)
+        data = xread(file, size - 4)
 
         numflags = data[0]
         if numflags != 1:
@@ -1176,7 +1175,7 @@ class Tag24(Tag):
         origfpos = file.tell()
         frames = []
         while file.tell() < self.offset + self.size:
-            header = fileutil.xread(file, 10)
+            header = xread(file, 10)
             if not self._is_frame_id(header[0:4]):
                 break
             frameid = header[0:4].decode("ASCII")
@@ -1192,7 +1191,7 @@ class Tag24(Tag):
                     file.seek(origfpos)
                     return self._read_frames(file, True)
             bflags = Int8.decode(header[8:10])
-            data = fileutil.xread(file, size)
+            data = xread(file, size)
             frames.append((frameid, bflags, data))
         return frames
 

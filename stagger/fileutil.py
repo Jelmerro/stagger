@@ -151,11 +151,11 @@ def _copy_chunk(src, dst, length):
     "Copy length bytes from file src to file dst."
     BUFSIZE = 128 * 1024
     while length > 0:
-        l = min(BUFSIZE, length)
-        buf = src.read(l)
-        assert len(buf) == l
+        size = min(BUFSIZE, length)
+        buf = src.read(size)
+        assert len(buf) == size
         dst.write(buf)
-        length -= l
+        length -= size
 
 
 def _replace_chunk_in_place(
