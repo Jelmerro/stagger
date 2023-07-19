@@ -7,7 +7,7 @@ The ID3v2 tag format is notorious for its useless specification documents and it
 Stagger is to provide a robust tagging package that is able to handle all the various badly formatted tags out there and allow you to convert them to a consensus format.
 This fork aims to maintain compatibility with recent Python versions.
 
-Features currently implemented:
+## Features
 
 - Reads and writes ID3 v1.0, 1.1, 2.2, 2.3 and 2.4 tags
 - Supports conversion between tag versions
@@ -33,3 +33,14 @@ TIT2(utf-8 "Staralfur")
 >>> tag.title = "The Battle of Evermore"          # Easy and friendly API
 >>> tag.write()                                   # Write changes back to file
 ```
+
+## Installation
+
+You can add it to your setup.py or pyproject.toml file as a dependency using:
+
+`stagger @ git+https://git@github.com/Jelmerro/stagger@master`
+
+## License
+
+Stagger was first started by Karoly Lorentey, but this fork is developed by Jelmer van Arnhem.
+It is licensed under the terms of the BSD license, please see the individual files and the LICENSE for further details.

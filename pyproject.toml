@@ -1,0 +1,11 @@
+[project]
+name="stagger"
+version="1.2.0"
+authors=[{name="Jelmer van Arnhem"}]
+description="ID3v1/ID3v2 tag manipulation package in pure Python 3"
+license={text="BSD"}
+requires-python=">=3.5"
+[tool.setuptools]
+include-package-data=true
+[project.scripts]
+stagger="stagger.commandline:main"
