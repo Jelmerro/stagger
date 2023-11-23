@@ -40,6 +40,12 @@ You can add it to your setup.py or pyproject.toml file as a dependency using:
 
 `stagger @ git+https://git@github.com/Jelmerro/stagger@master`
 
+## Tests
+
+You can run the unit tests with:
+
+`python -m unittest test/*.py`
+
 ## License
 
 Stagger was first started by Karoly Lorentey, but this fork is developed by Jelmer van Arnhem.

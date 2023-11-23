@@ -1,7 +1,7 @@
 # specs.py
 # https://github.com/Jelmerro/stagger
 #
-# Copyright (c) 2022-2022 Jelmer van Arnhem
+# Copyright (c) 2022-2023 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
 #
@@ -243,7 +243,7 @@ class BinaryDataSpec(Spec):
     def validate(self, frame, value):
         if value is None:
             return bytes()
-        if not isinstance(value, ByteString):
+        if not isinstance(value, (bytes, bytearray)):
             raise TypeError("Not a byte sequence")
         return value
 
