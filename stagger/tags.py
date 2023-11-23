@@ -1,7 +1,7 @@
 # tags.py
 # https://github.com/Jelmerro/stagger
 #
-# Copyright (c) 2022-2022 Jelmer van Arnhem
+# Copyright (c) 2022-2023 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
 #
@@ -499,7 +499,7 @@ class Tag(MutableMapping, metaclass=abc.ABCMeta):
         try:
             date = self.__friendly_text_collect(dateframe)[0]
             m = re.match(
-                r"\s*(?P<month>[01][0-9])\s*-?\s*(?P<day>[0-3][0-9])?\s*$",
+                r"\s*(?P<day>[0-3][0-9])\s*-?\s*(?P<month>[01][0-9])?\s*$",
                 date)
             if m is not None:
                 month = int(m.group("month"))
@@ -767,7 +767,7 @@ class Tag22(Tag):
         if year is not None:
             self["TYE"] = "{0:04}".format(year)
         if month is not None and day is not None:
-            self["TDA"] = "{0:02}{1:02}".format(month, day)
+            self["TDA"] = "{0:02}{1:02}".format(day, month)
         if hour is not None and minute is not None:
             self["TIM"] = "{0:02}{1:02}".format(hour, minute)
 
@@ -888,7 +888,7 @@ class Tag23(Tag):
         if year is not None:
             self["TYER"] = "{0:04}".format(year)
         if month is not None and day is not None:
-            self["TDAT"] = "{0:02}{1:02}".format(month, day)
+            self["TDAT"] = "{0:02}{1:02}".format(day, month)
         if hour is not None and minute is not None:
             self["TIME"] = "{0:02}{1:02}".format(hour, minute)
 

@@ -2,7 +2,7 @@
 # friendly.py
 # https://github.com/Jelmerro/stagger
 #
-# Copyright (c) 2022-2022 Jelmer van Arnhem
+# Copyright (c) 2022-2023 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
 #
@@ -213,26 +213,26 @@ class FriendlyTestCase(unittest.TestCase):
             tag.date = "2009-07-12"
             self.assertEqual(tag.date, "2009-07-12")
             self.assertEqual(tag[yearframe], yearframe("2009"))
-            self.assertEqual(tag[dateframe], dateframe("0712"))
+            self.assertEqual(tag[dateframe], dateframe("1207"))
             self.assertTrue(timeframe not in tag)
 
             # Date + time
             tag.date = "2009-07-12 18:01"
             self.assertEqual(tag.date, "2009-07-12 18:01")
             self.assertEqual(tag[yearframe], yearframe("2009"))
-            self.assertEqual(tag[dateframe], dateframe("0712"))
+            self.assertEqual(tag[dateframe], dateframe("1207"))
             self.assertEqual(tag[timeframe], timeframe("1801"))
 
             tag.date = "2009-07-12 18:01:23"
             self.assertEqual(tag.date, "2009-07-12 18:01")
             self.assertEqual(tag[yearframe], yearframe("2009"))
-            self.assertEqual(tag[dateframe], dateframe("0712"))
+            self.assertEqual(tag[dateframe], dateframe("1207"))
             self.assertEqual(tag[timeframe], timeframe("1801"))
 
             tag.date = "2009-07-12T18:01:23"
             self.assertEqual(tag.date, "2009-07-12 18:01")
             self.assertEqual(tag[yearframe], yearframe("2009"))
-            self.assertEqual(tag[dateframe], dateframe("0712"))
+            self.assertEqual(tag[dateframe], dateframe("1207"))
             self.assertEqual(tag[timeframe], timeframe("1801"))
 
             # Truncate to year only
