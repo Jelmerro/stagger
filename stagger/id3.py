@@ -1,7 +1,7 @@
 # id3.py
 # https://github.com/Jelmerro/stagger
 #
-# Copyright (c) 2022-2022 Jelmer van Arnhem
+# Copyright (c) 2022-2024 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
 #
@@ -32,9 +32,6 @@
 
 """List of frames defined in the various ID3 versions.
 """
-
-import imghdr
-from io import StringIO
 
 from stagger.frames import Frame, TextFrame, CreditsFrame, URLFrame
 from stagger.frames import PictureFrame, is_frame_class
@@ -513,7 +510,7 @@ class APIC(PictureFrame):
 
     def _str_fields(self):
         img = "{0} bytes of {1} data".format(
-            len(self.data), imghdr.what(None, self.data[:32]))
+            len(self.data), self.mime)
         return ("type={0}, desc={1}, mime={2}: {3}".format(
             repr(self._spec("type").to_str(self.type)),
             repr(self.desc), repr(self.mime), img))
@@ -1073,6 +1070,7 @@ class PIC(PictureFrame):
     _version = 2
 
     def _set_format(self, format):
+        self.mime = format
         if format.lower() in ("jpeg", "jpg", "image/jpeg", "image/jpg"):
             self.format = "JPG"
         elif format.lower() in ("png", "image/png"):
@@ -1085,19 +1083,17 @@ class PIC(PictureFrame):
             return self
         assert version in (3, 4)
         if self.format.upper() == "PNG":
-            mime = "image/png"
+            self.mime = "image/png"
         elif self.format.upper() == "JPG":
-            mime = "image/jpeg"
+            self.mime = "image/jpeg"
         else:
-            mime = imghdr.what(StringIO(self.data))
-            if mime is None:
-                raise ValueError("Unknown image format")
-            mime = "image/" + mime.lower()
-        return APIC(mime=mime, type=self.type, desc=self.desc, data=self.data)
+            raise ValueError("Unknown image format")
+        return APIC(
+            mime=self.mime, type=self.type, desc=self.desc, data=self.data)
 
     def _str_fields(self):
         img = "{0} bytes of {1} data".format(
-            len(self.data), imghdr.what(None, self.data[:32]))
+            len(self.data), self.mime)
         return ("type={0}, desc={1}, format={2}: {3}".format(
             repr(self._spec("type").to_str(self.type)),
             repr(self.desc), repr(self.format), img))

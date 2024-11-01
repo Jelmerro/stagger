@@ -1,7 +1,7 @@
 # id3v1.py
 # https://github.com/Jelmerro/stagger
 #
-# Copyright (c) 2022-2022 Jelmer van Arnhem
+# Copyright (c) 2022-2024 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
 #
@@ -50,13 +50,13 @@ class Tag1():
         if value is None:
             self._genre = 0
             return
-        if type(value) == int:
+        if isinstance(value, int):
             if value in range(256):
                 self._genre = value
             else:
                 raise ValueError("Genre must be between 0 and 255")
             return
-        if type(value) == str:
+        if isinstance(value, str):
             if value.lower() == "unknown":
                 self._genre = 255
                 return

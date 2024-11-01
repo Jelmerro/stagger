@@ -2,7 +2,7 @@
 # friendly.py
 # https://github.com/Jelmerro/stagger
 #
-# Copyright (c) 2022-2023 Jelmer van Arnhem
+# Copyright (c) 2022-2024 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
 #
@@ -295,7 +295,7 @@ class FriendlyTestCase(unittest.TestCase):
         self.assertEqual(tag[PIC][0].desc, "")
         self.assertEqual(tag[PIC][0].format, "JPG")
         self.assertEqual(len(tag[PIC][0].data), 60511)
-        self.assertEqual(tag.picture, "Other(0)::<60511 bytes of jpeg data>")
+        self.assertEqual(tag.picture, "Other(0)::<60511 bytes of image/jpeg data>")
 
         # Set to empty
         tag.picture = ""
@@ -322,7 +322,7 @@ class FriendlyTestCase(unittest.TestCase):
             self.assertEqual(tag[APIC][0].mime, "image/jpeg")
             self.assertEqual(len(tag[APIC][0].data), 60511)
             self.assertEqual(
-                tag.picture, "Other(0)::<60511 bytes of jpeg data>")
+                tag.picture, "Other(0)::<60511 bytes of image/jpeg data>")
 
             # Set to empty
             tag.picture = ""

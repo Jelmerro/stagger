@@ -1,7 +1,7 @@
 # specs.py
 # https://github.com/Jelmerro/stagger
 #
-# Copyright (c) 2022-2023 Jelmer van Arnhem
+# Copyright (c) 2022-2024 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
 #
@@ -31,7 +31,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 from abc import abstractmethod, ABCMeta
-from collections.abc import ByteString, Sequence
+from collections.abc import Sequence
 from warnings import warn
 
 from stagger.conversion import Int8

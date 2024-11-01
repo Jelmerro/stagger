@@ -1,7 +1,7 @@
 # tags.py
 # https://github.com/Jelmerro/stagger
 #
-# Copyright (c) 2022-2023 Jelmer van Arnhem
+# Copyright (c) 2022-2024 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
 #
@@ -34,7 +34,6 @@ import abc
 import struct
 import re
 import io
-import imghdr
 import zlib
 from collections.abc import MutableMapping, Iterable
 
@@ -541,7 +540,7 @@ class Tag(MutableMapping, metaclass=abc.ABCMeta):
             else:
                 return ", ".join("{0}:{1}:<{2} bytes of {3} data>".format(
                     f._spec("type").to_str(f.type), f.desc, len(f.data),
-                    imghdr.what(None, f.data[:32]))
+                    f.mime)
                     for f in self[frameid])
 
         def setter(self, value):

@@ -1,7 +1,7 @@
 # frames.py
 # https://github.com/Jelmerro/stagger
 #
-# Copyright (c) 2022-2022 Jelmer van Arnhem
+# Copyright (c) 2022-2024 Jelmer van Arnhem
 # Copyright (c) 2009-2011 Karoly Lorentey  <karoly@lorentey.hu>
 # All rights reserved.
 #
@@ -33,7 +33,6 @@
 """Class definitions for ID3v2 frames."""
 
 import abc
-import imghdr
 from abc import abstractmethod
 from warnings import warn
 
@@ -324,9 +323,9 @@ class PictureFrame(Frame):
                 self.data = file.read()
                 self.type = 0
                 self.desc = ""
-                picformat = imghdr.what(None, self.data[:32])
-                if not picformat:
-                    picformat = value.rpartition(".")[2]
+                picformat = "image/jpeg"
+                if value.lower().endswith(".png"):
+                    picformat = "image/png"
                 self._set_format(picformat)
 
     @abstractmethod
